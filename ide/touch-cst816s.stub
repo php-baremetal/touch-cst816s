@@ -1,0 +1,94 @@
+<?php
+// php-baremetal/touch-cst816s 1.0.0 — IDE helper, not loaded at runtime.
+
+namespace Baremetal\I2c\Driver {
+    /**
+     * A CST816S touch controller (one finger and a gesture code computed by the chip): extends
+     * Baremetal\I2c\Device and implements Baremetal\Input\Touch.
+     *
+     * All the Device methods work on it too. Coordinates are in screen coordinates, already turned by
+     * $mirror_x, $mirror_y and $swap_xy (swap first, then mirror, as the display does) and kept inside
+     * 0 <= x < $width, 0 <= y < $height. The chip puts itself to sleep and wakes on a touch; a synchronous read
+     * while it sleeps can fail, and point() and gesture() then return null.
+     */
+    class Cst816s extends \Baremetal\I2c\Device implements \Baremetal\Input\Touch
+    {
+        /**
+         * Attaches the chip and, with $rst, resets it (reset line low for 20 ms, then 80 ms to start). The chip is
+         * not configured otherwise, except the double tap setting (see $double_tap).
+         *
+         * Constructing it again with the same bus and address returns a handle to the same device; the first
+         * construction decides the pins, the size and the orientation.
+         *
+         * @param \Baremetal\I2c\Bus $bus The bus the chip is wired to.
+         * @param int $address 7-bit address.
+         * @param int $int GPIO of the INT line (low at each report), or -1: events() needs it.
+         * @param int $rst GPIO of the reset line, or -1 for none.
+         * @param int $width Screen width in pixels, 1 to 4096.
+         * @param int $height Screen height in pixels, 1 to 4096.
+         * @param bool $mirror_x Mirror the x axis (after $swap_xy).
+         * @param bool $mirror_y Mirror the y axis (after $swap_xy).
+         * @param bool $swap_xy Swap the x and y axes.
+         * @param bool $double_tap Turn on the chip's double tap detection (bit 0 of its MotionMask register).
+         *                         With it on, DoubleTap is reported, and a single tap (Gesture Tap) is reported
+         *                         about 260 ms after the release instead of at once. With it off, Tap is
+         *                         immediate and DoubleTap never comes. The chip sleeps when idle and does not
+         *                         answer then: the setting is written at once after a reset ($rst), otherwise
+         *                         when the first read succeeds (a touch wakes the chip), so DoubleTap may be
+         *                         missing until the first touch has been read.
+         * @throws \ValueError When $width or $height is outside 1 to 4096, or $address is outside 0x08 to 0x77.
+         * @throws \Exception "cannot init cst816s at 0x..: ..." or "address 0x.. on this bus is already used by
+         *                    another driver".
+         */
+        public function __construct(
+            \Baremetal\I2c\Bus $bus,
+            int $address = 0x15,
+            int $int = -1,
+            int $rst = -1,
+            int $width = 240,
+            int $height = 240,
+            bool $mirror_x = false,
+            bool $mirror_y = false,
+            bool $swap_xy = false,
+            bool $double_tap = true
+        ) {}
+
+        /**
+         * The controller described by a block of the board, on the bus of the board's "i2c" block. The block has
+         * "width" and "height", and optionally "address", "int", "rst", "mirror-x", "mirror-y", "swap-xy"
+         * (the names of the display block) and "double-tap" (bool, default true).
+         *
+         * @param string $block Name of the board block.
+         * @throws \RuntimeException When the board has no such block, the block is not of type "cst816s", or
+         *                           "width" or "height" is missing.
+         */
+        public static function onboard(string $block = 'touch'): self {}
+
+        /**
+         * The point touched now, read from the chip.
+         *
+         * @return array{x: int, y: int}|null The point in screen coordinates; null with no finger, or when the read
+         *                                    fails (the chip is asleep).
+         */
+        public function point(): ?array {}
+
+        /**
+         * The gesture the chip holds now, read from the chip: the swipe directions are the ones on the screen,
+         * after the orientation.
+         *
+         * @return \Baremetal\Input\GestureType|null Null when the chip holds none, or when the read fails.
+         */
+        public function gesture(): ?\Baremetal\Input\GestureType {}
+
+        /**
+         * Turns on Pressed, Moved, Released and Gesture events for this device, served from the INT line by the
+         * executor, and returns the handle that stops and starts them. Every call returns a new handle on the same
+         * source. When a read fails while the finger is down (the chip fell asleep), Released is raised with the
+         * last point.
+         *
+         * @throws \ValueError "Cst816s::events(): needs the INT pin (int:)" when constructed without $int.
+         * @throws \Error When the interrupt service cannot start on the pin.
+         */
+        public function events(): \Baremetal\Source {}
+    }
+}

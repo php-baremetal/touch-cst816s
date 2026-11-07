@@ -1,0 +1,28 @@
+{
+    "name": "php-baremetal/touch-cst816s",
+    "description": "CST816S touch controller driver for ext-i2c (Baremetal\\I2c\\Driver\\Cst816s, Baremetal\\Input\\Touch): points, chip gestures and interrupt-driven events.",
+    "type": "bm-lib",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Gianfrancesco Aurecchia",
+            "email": "gianfri@php-baremetal.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.3",
+        "php-baremetal/ext-i2c": "^1.1.1",
+        "php-baremetal/ext-input": "^1.0",
+        "php-baremetal/ext-gpio": "^1.0",
+        "php-baremetal/bm-common": "^1.1"
+    },
+    "extra": {
+        "baremetal": {
+            "register": {
+                "i2c_drivers": ["cst816s_driver_desc"]
+            },
+            "board-blocks": ["touch:cst816s"],
+            "ide-stubs": ["ide/touch-cst816s.stub"]
+        }
+    }
+}
