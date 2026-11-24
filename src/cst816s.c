@@ -11,9 +11,9 @@
    +----------------------------------------------------------------------+
 */
 
-/* CST816S capacitive touch controller. Synchronous reads (point, gesture) and an interrupt-driven event service:
- * the INT line kicks irq.service on the executor, which reads the 6-byte report, tracks the finger and raises
- * Baremetal\Input events through ext-input. Uses only the neutral API of ext-i2c, ext-input and bm-common. */
+/* CST816S capacitive touch controller. Synchronous reads (point, points, gesture) and an interrupt-driven event
+ * service: the INT line kicks irq.service on the executor, which reads the 6-byte report, tracks the finger and
+ * raises Baremetal\Input events through ext-input. Uses only the neutral API of ext-i2c, ext-input and bm-common. */
 #include <stdatomic.h>
 #include <string.h>
 
@@ -148,6 +148,12 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_cst_onboard, 0, 0, Baremetal\\I2c
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_cst_point, 0, 0, IS_ARRAY, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_cst_points, 0, 0, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_cst_max_points, 0, 0, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_cst_gesture, 0, 0, Baremetal\\Input\\GestureType, 1)
@@ -295,12 +301,25 @@ PHP_METHOD(Cst816s, onboard)
     zval_ptr_dtor(&bus);
     if (EG(exception)) {
         zval_ptr_dtor(return_value);
+        ZVAL_NULL(return_value);   /* the caller frees an unused result: not the object freed here */
         RETURN_THROWS();
     }
 }
 
-/* point(): the point touched now in screen coordinates, or null with no finger or when the read fails (the chip
- * sleeps by itself and wakes on touch, so a read can fail). */
+/* Reads the point touched now into *x, *y (screen coordinates): false with no finger or when the read fails (the
+ * chip sleeps by itself and wakes on touch, so a read can fail). */
+static bool cst_read_point(i2c_dev_t *d, int *x, int *y)
+{
+    cst_state *st = bm_i2c_dev_state(d);
+    uint8_t b[6];
+    bm_err_t rerr = cst_read_report(d, b);
+    if (rerr == BM_OK) {
+        cst_apply_config(d, st);   /* awake: take a pending double tap setting */
+    }
+    return rerr == BM_OK && cst_track_point(&st->track, b, x, y);
+}
+
+/* point(): the point touched now in screen coordinates, or null with no finger or when the read fails. */
 PHP_METHOD(Cst816s, point)
 {
     ZEND_PARSE_PARAMETERS_NONE();
@@ -308,19 +327,41 @@ PHP_METHOD(Cst816s, point)
     if (!d) {
         RETURN_THROWS();
     }
-    cst_state *st = bm_i2c_dev_state(d);
-    uint8_t b[6];
     int x, y;
-    bm_err_t rerr = cst_read_report(d, b);
-    if (rerr == BM_OK) {
-        cst_apply_config(d, st);   /* awake: take a pending double tap setting */
-    }
-    if (rerr != BM_OK || !cst_track_point(&st->track, b, &x, &y)) {
+    if (!cst_read_point(d, &x, &y)) {
         RETURN_NULL();
     }
     array_init_size(return_value, 2);
     add_assoc_long(return_value, "x", x);
     add_assoc_long(return_value, "y", y);
+}
+
+/* points(): the same read as point(), as the list of ext-input 1.1: empty, or the one finger with id 0. */
+PHP_METHOD(Cst816s, points)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    i2c_dev_t *d = i2c_device_this(ZEND_THIS);
+    if (!d) {
+        RETURN_THROWS();
+    }
+    int x, y;
+    if (!cst_read_point(d, &x, &y)) {
+        RETURN_EMPTY_ARRAY();
+    }
+    zval p;
+    array_init_size(&p, 3);
+    add_assoc_long(&p, "id", 0);
+    add_assoc_long(&p, "x", x);
+    add_assoc_long(&p, "y", y);
+    array_init_size(return_value, 1);
+    add_next_index_zval(return_value, &p);
+}
+
+/* maxPoints(): the CST816S reports one finger. */
+PHP_METHOD(Cst816s, maxPoints)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    RETURN_LONG(1);
 }
 
 /* gesture(): the gesture the chip holds now (swipe directions in screen orientation), or null when there is none
@@ -381,6 +422,8 @@ static const zend_function_entry cst816s_methods[] = {
     PHP_ME(Cst816s, __construct, arginfo_cst_ctor,    ZEND_ACC_PUBLIC)
     PHP_ME(Cst816s, onboard,     arginfo_cst_onboard, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     PHP_ME(Cst816s, point,       arginfo_cst_point,   ZEND_ACC_PUBLIC)
+    PHP_ME(Cst816s, points,      arginfo_cst_points,  ZEND_ACC_PUBLIC)
+    PHP_ME(Cst816s, maxPoints,   arginfo_cst_max_points, ZEND_ACC_PUBLIC)
     PHP_ME(Cst816s, gesture,     arginfo_cst_gesture, ZEND_ACC_PUBLIC)
     PHP_ME(Cst816s, events,      arginfo_cst_events,  ZEND_ACC_PUBLIC)
     PHP_FE_END

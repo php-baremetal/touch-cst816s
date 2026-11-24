@@ -1,5 +1,5 @@
 <?php
-// php-baremetal/touch-cst816s 1.0.0 — IDE helper, not loaded at runtime.
+// php-baremetal/touch-cst816s 1.1.0 — IDE helper, not loaded at runtime.
 
 namespace Baremetal\I2c\Driver {
     /**
@@ -71,6 +71,12 @@ namespace Baremetal\I2c\Driver {
          *                                    fails (the chip is asleep).
          */
         public function point(): ?array {}
+
+        /** {@inheritDoc} */
+        public function points(): array {}
+
+        /** {@inheritDoc} */
+        public function maxPoints(): int {}
 
         /**
          * The gesture the chip holds now, read from the chip: the swipe directions are the ones on the screen,

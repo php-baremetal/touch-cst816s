@@ -20,7 +20,7 @@ ask; `events()` turns on `Pressed`, `Moved`, `Released` and `Gesture` events ser
 | Class | `Baremetal\I2c\Driver\Cst816s`, extends `Baremetal\I2c\Device` |
 | Capability | `Baremetal\Input\Touch` (ext-input) |
 | Default address, clock | `0x15`, 400 kHz |
-| Fingers | one |
+| Fingers | one (`maxPoints()` is 1, the finger's id is 0) |
 | Gestures | swipe up, down, left, right, tap, double tap, long press (codes `0x01` to `0x05`, `0x0B`, `0x0C`) |
 
 ## Requirements
@@ -28,7 +28,7 @@ ask; `events()` turns on `Pressed`, `Moved`, `Released` and `Gesture` events ser
 | Requires | Why |
 | --- | --- |
 | `php-baremetal/ext-i2c` | The `Bus` and `Device` classes, the `i2c_drivers` registry, and the interrupt service. |
-| `php-baremetal/ext-input` | The `Touch` interface, the event classes and `GestureType`. |
+| `php-baremetal/ext-input` 1.1 or later | The `Touch` interface, the event classes and `GestureType`. |
 | `php-baremetal/ext-gpio` | Its neutral GPIO HAL drives the optional reset line (conductor adds the GPIO HAL of your SDK platform). |
 
 ## Coordinates

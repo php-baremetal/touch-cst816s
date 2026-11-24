@@ -1,6 +1,6 @@
 ---
 eyebrow: 'touch-cst816s · PHP API'
-lede:    'Constructor, onboard(), point(), gesture() and events() of Baremetal\I2c\Driver\Cst816s.'
+lede:    'Constructor, onboard(), point(), points(), maxPoints(), gesture() and events() of Baremetal\I2c\Driver\Cst816s.'
 see_also:
   - { href: '../overview.md', meta: 'Overview' }
   - { href: '../recipes/touch-events.md', meta: 'Recipe' }
@@ -33,6 +33,15 @@ Throws `\RuntimeException` when the board has no such block, the type differs, o
 Reads the chip: `['x' => int, 'y' => int]` in screen coordinates, or `null` with no finger or when the read fails
 (the chip is asleep).
 
+<!-- @method name="points(): array" returns="array" -->
+
+The same read as `point()`, in the form of `Baremetal\Input\Touch::points()`: `[]` with no finger or when the read
+fails, otherwise `[['id' => 0, 'x' => int, 'y' => int]]`. The CST816S tracks one finger, so its id is always 0.
+
+<!-- @method name="maxPoints(): int" returns="int" -->
+
+Returns 1: the CST816S reports one finger.
+
 <!-- @method name="gesture(): ?Baremetal\Input\GestureType" returns="?GestureType" -->
 
 Reads the gesture the chip holds now, or `null` when it holds none or the read fails. Swipe directions are the
@@ -45,7 +54,7 @@ Turns on the events described in [Touch events](package:php-baremetal/ext-input#
 `$int`: without it, `\ValueError` `Cst816s::events(): needs the INT pin (int:)`. It can be called again: it
 returns a new handle on the same source.
 
-The service reads the 6-byte report at each falling edge of INT and raises:
+The service reads the 6-byte report at each falling edge of INT and raises (always with `$id` 0: one finger):
 
 | Change | Event |
 | --- | --- |
